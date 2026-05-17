@@ -73,5 +73,10 @@ module.exports = {
       backgroundOpacity: ['dark'],
     },
   },
-  plugins: [require('@headlessui/tailwindcss'), require('@tailwindcss/forms'), require('tailwindcss-animate')],
+  plugins: [
+    require('@headlessui/tailwindcss'),
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+    require('tailwindcss-animate'),
+  ],
 }

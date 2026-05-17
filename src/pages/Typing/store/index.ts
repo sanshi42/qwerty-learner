@@ -152,13 +152,14 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       break
     case TypingStateActionType.SKIP_WORD: {
       const newIndex = state.chapterData.index + 1
+      state.isShowSkip = false
+      state.chapterData.wordCount += 1
       if (newIndex >= state.chapterData.words.length) {
         state.isTyping = false
         state.isFinished = true
       } else {
         state.chapterData.index = newIndex
       }
-      state.isShowSkip = false
       break
     }
     case TypingStateActionType.SKIP_2_WORD_INDEX: {

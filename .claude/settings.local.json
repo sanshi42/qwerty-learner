@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "allow": ["WebSearch"],
+    "allow": ["WebSearch", "Bash(yarn lint *)"],
     "deny": [],
     "ask": []
   }

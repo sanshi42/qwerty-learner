@@ -1,10 +1,11 @@
 import AiProviderConfigDialog from './AiProviderConfigDialog'
 import {
-  aiQuizResponseFormat,
   buildAiQuizMessages,
+  extractJsonObjects,
   getAiCacheKey,
   getCachedText,
   parseAndValidateAiQuiz,
+  parseSingleQuestionBlock,
   setCachedText,
   streamChatCompletion,
 } from './aiHelpers'
@@ -60,9 +61,9 @@ export default function QuizPanel({ words, dictId, chapter }: QuizPanelProps) {
   const [aiResults, setAiResults] = useState<AiQuizResult[]>([])
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [aiMessage, setAiMessage] = useState('')
-  const [aiRawText, setAiRawText] = useState('')
   const [isConfigOpen, setIsConfigOpen] = useState(false)
   const abortControllerRef = useRef<AbortController>()
+  const blockCountRef = useRef(0)
 
   const aiCacheKey = useMemo(() => getAiCacheKey('quiz', dictId, chapter, words, aiConfig), [aiConfig, chapter, dictId, words])
   const localQuestion = localQuestions[localIndex]
@@ -94,7 +95,6 @@ export default function QuizPanel({ words, dictId, chapter }: QuizPanelProps) {
       setAiQuestions([])
       setAiStatus('idle')
       setAiMessage('')
-      setAiRawText('')
       return
     }
 
@@ -103,12 +103,10 @@ export default function QuizPanel({ words, dictId, chapter }: QuizPanelProps) {
       setAiQuestions(normalizeAiQuestions(payload.questions))
       setAiStatus('success')
       setAiMessage('已从本地缓存载入 AI 习题。')
-      setAiRawText(cachedQuiz)
     } catch {
       setAiQuestions([])
       setAiStatus('idle')
       setAiMessage('')
-      setAiRawText('')
     }
     setAiIndex(0)
     setAiAnswer('')
@@ -157,7 +155,6 @@ export default function QuizPanel({ words, dictId, chapter }: QuizPanelProps) {
         setAiQuestions(normalizeAiQuestions(payload.questions))
         setAiStatus('success')
         setAiMessage('已从本地缓存载入 AI 习题。')
-        setAiRawText(cachedQuiz)
         return
       }
 
@@ -166,34 +163,59 @@ export default function QuizPanel({ words, dictId, chapter }: QuizPanelProps) {
       abortControllerRef.current = abortController
       setAiStatus('loading')
       setAiMessage('正在流式生成 AI 习题...')
-      setAiRawText('')
+      setAiQuestions([])
+      setAiIndex(0)
+      setAiAnswer('')
+      setAiCurrentResult(undefined)
+      setAiResults([])
+      blockCountRef.current = 0
 
       try {
         const content = await streamChatCompletion(aiConfig, buildAiQuizMessages(words), {
           signal: abortController.signal,
           onDelta: (_delta, fullText) => {
-            setAiRawText(fullText)
+            const newBlocks = extractJsonObjects(fullText, blockCountRef.current)
+            if (newBlocks.length > 0) {
+              blockCountRef.current += newBlocks.length
+              const parsed = newBlocks.map(parseSingleQuestionBlock).filter((q): q is AiQuizQuestion => q !== null)
+              if (parsed.length > 0) {
+                const normalized = normalizeAiQuestions(parsed)
+                setAiQuestions((prev) => [...prev, ...normalized])
+                setAiMessage(`已生成 ${blockCountRef.current} 题...`)
+              }
+            }
           },
-          responseFormat:
-            aiConfig.providerName.trim().toLowerCase() === 'openai' && aiConfig.supportsStructuredJson ? aiQuizResponseFormat : undefined,
         })
         if (abortController.signal.aborted) {
           return
         }
-        const payload = parseAndValidateAiQuiz(content)
-        if (payload.questions.length === 0) {
-          throw new Error('AI 未返回可用题目，请重新生成。')
+
+        // 流式结束后，检查剩余未解析的 JSON blocks
+        const finalBlocks = extractJsonObjects(content, 0).slice(blockCountRef.current)
+        if (finalBlocks.length > 0) {
+          const parsed = finalBlocks.map(parseSingleQuestionBlock).filter((q): q is AiQuizQuestion => q !== null)
+          if (parsed.length > 0) {
+            blockCountRef.current += parsed.length
+            const normalized = normalizeAiQuestions(parsed)
+            setAiQuestions((prev) => [...prev, ...normalized])
+          }
         }
-        const normalizedPayloadText = JSON.stringify(payload)
-        setCachedText(aiCacheKey, normalizedPayloadText)
-        setAiQuestions(normalizeAiQuestions(payload.questions))
+
+        if (blockCountRef.current === 0) {
+          // 流式解析失败，回退到整体 JSON 解析
+          const payload = parseAndValidateAiQuiz(content)
+          if (payload.questions.length === 0) {
+            throw new Error('AI 未返回可用题目，请重新生成。')
+          }
+          const normalized = normalizeAiQuestions(payload.questions)
+          setAiQuestions(normalized)
+          blockCountRef.current = normalized.length
+        }
+        // 缓存原始返回内容
+        setCachedText(aiCacheKey, content)
+
         setAiStatus('success')
-        setAiMessage('AI 习题生成完成，已缓存到本机。')
-        setAiRawText(normalizedPayloadText)
-        setAiIndex(0)
-        setAiAnswer('')
-        setAiCurrentResult(undefined)
-        setAiResults([])
+        setAiMessage(`AI 习题生成完成，共 ${blockCountRef.current} 题，已缓存到本机。`)
       } catch (error) {
         if (abortController.signal.aborted) {
           setAiStatus('idle')
@@ -382,15 +404,18 @@ export default function QuizPanel({ words, dictId, chapter }: QuizPanelProps) {
                 <span className={`${aiStatus === 'error' ? 'text-red-500' : 'text-gray-500 dark:text-gray-300'} text-xs`}>{aiMessage}</span>
               )}
             </div>
-            {aiStatus === 'loading' && (
-              <div className="customized-scrollbar min-h-0 flex-1 overflow-y-auto rounded-lg bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-900 dark:text-gray-300">
-                {aiRawText ? <pre className="whitespace-pre-wrap break-words font-mono">{aiRawText}</pre> : '正在等待 AI 返回题目...'}
+            {aiStatus === 'loading' && aiQuestions.length === 0 && (
+              <div className="flex flex-1 items-center justify-center text-gray-500">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-solid border-indigo-400 border-r-transparent" />
+                  <span className="text-sm">AI 正在出题中...</span>
+                </div>
               </div>
             )}
-            {aiStatus !== 'loading' && aiQuestions.length === 0 && (
+            {(aiStatus !== 'loading' || aiQuestions.length > 0) && aiQuestions.length === 0 && (
               <div className="text-gray-500">先生成 AI 题。题目会按章节和模型配置缓存到本机。</div>
             )}
-            {aiStatus !== 'loading' && aiQuestions.length > 0 && (
+            {aiQuestions.length > 0 && (
               <>
                 <QuizHeader
                   current={aiIndex + 1}

@@ -7,6 +7,8 @@ import { aiProviderConfigAtom } from '@/store'
 import { useAtomValue } from 'jotai'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import IconArrowsMaximize from '~icons/tabler/arrows-maximize'
 import IconCopy from '~icons/tabler/copy'
 import IconMinus from '~icons/tabler/minus'
@@ -230,11 +232,11 @@ export default function AiLearningPanel({ words, dictId, chapter }: AiLearningPa
             </IconButton>
             <button
               type="button"
-              className="ml-2 rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="my-btn-primary ml-4 flex items-center gap-1 px-4 py-2 text-sm"
               onClick={() => setIsFullscreen(false)}
-              title="退出全屏"
             >
               <IconX className="icon" />
+              退出全屏
             </button>
           </div>
           <div className="min-h-0 flex-1 p-6">
@@ -277,8 +279,8 @@ function AiReader({ result, status, scale }: ReaderProps) {
   return (
     <div className="customized-scrollbar min-h-0 flex-1 overflow-y-auto rounded-lg bg-white p-4 text-left shadow-sm dark:bg-gray-800">
       {result ? (
-        <div className="whitespace-pre-wrap break-words leading-8" style={{ fontSize: `${scale}%` }}>
-          {result}
+        <div style={{ fontSize: `${scale}%` }}>
+          <ReactMarkdown components={markdownComponents}>{result}</ReactMarkdown>
         </div>
       ) : (
         <div className="text-sm leading-6 text-gray-500 dark:text-gray-300">
@@ -289,4 +291,35 @@ function AiReader({ result, status, scale }: ReaderProps) {
       )}
     </div>
   )
+}
+
+const markdownComponents: Components = {
+  h1: ({ children }) => <h1 className="mb-2 mt-4 text-xl font-bold text-gray-900 dark:text-gray-50">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-2 mt-4 text-lg font-bold text-gray-900 dark:text-gray-50">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-1.5 mt-3 text-base font-semibold text-gray-800 dark:text-gray-100">{children}</h3>,
+  h4: ({ children }) => <h4 className="mb-1 mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100">{children}</h4>,
+  p: ({ children }) => <p className="my-1.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
+  ul: ({ children }) => <ul className="my-1.5 list-disc pl-5 text-sm text-gray-700 dark:text-gray-300">{children}</ul>,
+  ol: ({ children }) => <ol className="my-1.5 list-decimal pl-5 text-sm text-gray-700 dark:text-gray-300">{children}</ol>,
+  li: ({ children }) => <li className="my-0.5">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-gray-50">{children}</strong>,
+  code: ({ children }) => (
+    <code className="rounded bg-gray-100 px-1 py-0.5 text-xs text-pink-600 dark:bg-gray-700 dark:text-pink-300">{children}</code>
+  ),
+  pre: ({ children }) => (
+    <pre className="my-2 overflow-x-auto rounded-md bg-gray-100 p-3 text-xs text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+      {children}
+    </pre>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="my-2 border-l-4 border-indigo-300 pl-3 text-sm italic text-gray-600 dark:border-indigo-500 dark:text-gray-400">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-3 border-gray-200 dark:border-gray-600" />,
+  a: ({ href, children }) => (
+    <a href={href} className="text-indigo-500 underline hover:text-indigo-600" target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
 }

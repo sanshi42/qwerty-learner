@@ -10,7 +10,7 @@ import 'animate.css'
 import { useAtomValue } from 'jotai'
 import mixpanel from 'mixpanel-browser'
 import process from 'process'
-import React, { Suspense, lazy, useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -33,14 +33,17 @@ function Root() {
   }, [darkMode])
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+  const prevIsMobileRef = useRef(isMobile)
 
   useEffect(() => {
     const handleResize = () => {
-      const isMobile = window.innerWidth <= 600
-      if (!isMobile) {
+      const nowMobile = window.innerWidth <= 600
+      // 只在从移动端切换到桌面端时才重定向，避免全屏等 resize 事件破坏状态
+      if (prevIsMobileRef.current && !nowMobile) {
         window.location.href = '/'
       }
-      setIsMobile(isMobile)
+      prevIsMobileRef.current = nowMobile
+      setIsMobile(nowMobile)
     }
 
     window.addEventListener('resize', handleResize)
