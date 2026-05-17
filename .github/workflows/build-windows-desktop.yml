@@ -1,0 +1,50 @@
+name: Build Windows Desktop App
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install Yarn
+        run: npm install -g yarn@1.22.22
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build and publish Windows installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
+          releaseName: Qwerty Learner 桌面版 v__VERSION__
+          releaseBody: |
+            Windows 用户请下载本页面 Assets 中的 `.msi` 安装包，双击安装后从开始菜单打开 Qwerty Learner。
+
+            如果 Windows 提示未知发布者，这是因为当前安装包尚未配置代码签名证书。
+          releaseDraft: false
+          prerelease: false
+          uploadWorkflowArtifacts: true
