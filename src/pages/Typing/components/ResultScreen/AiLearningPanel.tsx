@@ -72,6 +72,21 @@ export default function AiLearningPanel({ words, dictId, chapter }: AiLearningPa
     }
   }, [])
 
+  useEffect(() => {
+    if (!isFullscreen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFullscreen])
+
   const generateExplanation = useCallback(
     async (forceRefresh = false) => {
       if (!hasApiKey) {
@@ -207,8 +222,8 @@ export default function AiLearningPanel({ words, dictId, chapter }: AiLearningPa
       </div>
 
       {isFullscreen && (
-        <div className="fixed inset-0 z-[65] flex flex-col bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100">
-          <div className="flex flex-shrink-0 items-center gap-2 border-b border-gray-100 px-6 py-4 dark:border-gray-700">
+        <div className="absolute inset-0 z-30 flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-gray-100 px-6 py-4 dark:border-gray-700">
             <div className="min-w-0 flex-1">
               <div className="truncate text-lg font-semibold">AI 讲解</div>
               {message && (
@@ -239,7 +254,7 @@ export default function AiLearningPanel({ words, dictId, chapter }: AiLearningPa
               退出全屏
             </button>
           </div>
-          <div className="min-h-0 flex-1 p-6">
+          <div className="flex min-h-0 flex-1 overflow-hidden p-6">
             <AiReader result={result} status={status} scale={readingScale} />
           </div>
         </div>
@@ -277,9 +292,9 @@ function IconButton({
 
 function AiReader({ result, status, scale }: ReaderProps) {
   return (
-    <div className="customized-scrollbar min-h-0 flex-1 overflow-y-auto rounded-lg bg-white p-4 text-left shadow-sm dark:bg-gray-800">
+    <div className="customized-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden rounded-lg bg-white p-4 text-left shadow-sm dark:bg-gray-800">
       {result ? (
-        <div style={{ fontSize: `${scale}%` }}>
+        <div className="min-w-0 max-w-full break-words" style={{ fontSize: `${scale}%`, overflowWrap: 'anywhere' }}>
           <ReactMarkdown components={markdownComponents}>{result}</ReactMarkdown>
         </div>
       ) : (
@@ -294,25 +309,25 @@ function AiReader({ result, status, scale }: ReaderProps) {
 }
 
 const markdownComponents: Components = {
-  h1: ({ children }) => <h1 className="mb-2 mt-4 text-xl font-bold text-gray-900 dark:text-gray-50">{children}</h1>,
-  h2: ({ children }) => <h2 className="mb-2 mt-4 text-lg font-bold text-gray-900 dark:text-gray-50">{children}</h2>,
-  h3: ({ children }) => <h3 className="mb-1.5 mt-3 text-base font-semibold text-gray-800 dark:text-gray-100">{children}</h3>,
-  h4: ({ children }) => <h4 className="mb-1 mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100">{children}</h4>,
-  p: ({ children }) => <p className="my-1.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
-  ul: ({ children }) => <ul className="my-1.5 list-disc pl-5 text-sm text-gray-700 dark:text-gray-300">{children}</ul>,
-  ol: ({ children }) => <ol className="my-1.5 list-decimal pl-5 text-sm text-gray-700 dark:text-gray-300">{children}</ol>,
+  h1: ({ children }) => <h1 className="mb-2 mt-4 text-[1.5em] font-bold text-gray-900 dark:text-gray-50">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-2 mt-4 text-[1.25em] font-bold text-gray-900 dark:text-gray-50">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-1.5 mt-3 text-[1.125em] font-semibold text-gray-800 dark:text-gray-100">{children}</h3>,
+  h4: ({ children }) => <h4 className="mb-1 mt-2 text-[1em] font-semibold text-gray-800 dark:text-gray-100">{children}</h4>,
+  p: ({ children }) => <p className="my-1.5 break-words text-[1em] leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
+  ul: ({ children }) => <ul className="my-1.5 list-disc break-words pl-5 text-[1em] text-gray-700 dark:text-gray-300">{children}</ul>,
+  ol: ({ children }) => <ol className="my-1.5 list-decimal break-words pl-5 text-[1em] text-gray-700 dark:text-gray-300">{children}</ol>,
   li: ({ children }) => <li className="my-0.5">{children}</li>,
   strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-gray-50">{children}</strong>,
   code: ({ children }) => (
-    <code className="rounded bg-gray-100 px-1 py-0.5 text-xs text-pink-600 dark:bg-gray-700 dark:text-pink-300">{children}</code>
+    <code className="rounded bg-gray-100 px-1 py-0.5 text-[0.875em] text-pink-600 dark:bg-gray-700 dark:text-pink-300">{children}</code>
   ),
   pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded-md bg-gray-100 p-3 text-xs text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+    <pre className="my-2 overflow-x-auto rounded-md bg-gray-100 p-3 text-[0.875em] text-gray-800 dark:bg-gray-700 dark:text-gray-200">
       {children}
     </pre>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="my-2 border-l-4 border-indigo-300 pl-3 text-sm italic text-gray-600 dark:border-indigo-500 dark:text-gray-400">
+    <blockquote className="my-2 border-l-4 border-indigo-300 pl-3 text-[1em] italic text-gray-600 dark:border-indigo-500 dark:text-gray-400">
       {children}
     </blockquote>
   ),
