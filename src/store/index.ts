@@ -1,9 +1,11 @@
 import atomForConfig from './atomForConfig'
 import { reviewInfoAtom } from './reviewInfoAtom'
-import { DISMISS_START_CARD_DATE_KEY, defaultFontSizeConfig } from '@/constants'
+import { DEFAULT_CHAPTER_LENGTH, DISMISS_START_CARD_DATE_KEY, defaultFontSizeConfig, normalizeChapterLength } from '@/constants'
 import { idDictionaryMap } from '@/resources/dictionary'
 import { correctSoundResources, keySoundResources, wrongSoundResources } from '@/resources/soundResource'
 import type {
+  AiProviderConfig,
+  ChapterLengthConfig,
   Dictionary,
   InfoPanelState,
   LoopWordTimesOption,
@@ -17,6 +19,11 @@ import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
 export const currentDictIdAtom = atomWithStorage('currentDict', 'cet4')
+
+export const chapterLengthConfigAtom = atomForConfig('chapterLengthConfig', {
+  wordCount: DEFAULT_CHAPTER_LENGTH,
+} as ChapterLengthConfig)
+
 export const currentDictInfoAtom = atom<Dictionary>((get) => {
   const id = get(currentDictIdAtom)
   let dict = idDictionaryMap[id]
@@ -24,7 +31,11 @@ export const currentDictInfoAtom = atom<Dictionary>((get) => {
   if (!dict) {
     dict = idDictionaryMap.cet4
   }
-  return dict
+  const chapterLength = normalizeChapterLength(get(chapterLengthConfigAtom).wordCount)
+  return {
+    ...dict,
+    chapterCount: Math.ceil(dict.length / chapterLength),
+  }
 })
 
 export const currentChapterAtom = atomWithStorage('currentChapter', 0)
@@ -107,6 +118,14 @@ export const wordDictationConfigAtom = atomForConfig('wordDictationConfig', {
   type: 'hideAll' as WordDictationType,
   openBy: 'auto' as WordDictationOpenBy,
 })
+
+export const aiProviderConfigAtom = atomForConfig('aiProviderConfig', {
+  providerName: 'OpenAI',
+  baseUrl: 'https://api.openai.com/v1',
+  model: 'gpt-5.4-mini',
+  apiKey: '',
+  supportsStructuredJson: true,
+} as AiProviderConfig)
 
 export const dismissStartCardDateAtom = atomWithStorage<Date | null>(DISMISS_START_CARD_DATE_KEY, null)
 

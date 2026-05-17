@@ -1,5 +1,13 @@
 import styles from './index.module.css'
-import { isIgnoreCaseAtom, isShowAnswerOnHoverAtom, isShowPrevAndNextWordAtom, isTextSelectableAtom, randomConfigAtom } from '@/store'
+import { CHAPTER_LENGTH_OPTIONS, MAX_CHAPTER_LENGTH, MIN_CHAPTER_LENGTH, normalizeChapterLength } from '@/constants'
+import {
+  chapterLengthConfigAtom,
+  isIgnoreCaseAtom,
+  isShowAnswerOnHoverAtom,
+  isShowPrevAndNextWordAtom,
+  isTextSelectableAtom,
+  randomConfigAtom,
+} from '@/store'
 import { Switch } from '@headlessui/react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useAtom } from 'jotai'
@@ -11,6 +19,7 @@ export default function AdvancedSetting() {
   const [isIgnoreCase, setIsIgnoreCase] = useAtom(isIgnoreCaseAtom)
   const [isTextSelectable, setIsTextSelectable] = useAtom(isTextSelectableAtom)
   const [isShowAnswerOnHover, setIsShowAnswerOnHover] = useAtom(isShowAnswerOnHoverAtom)
+  const [chapterLengthConfig, setChapterLengthConfig] = useAtom(chapterLengthConfigAtom)
 
   const onToggleRandom = useCallback(
     (checked: boolean) => {
@@ -49,6 +58,13 @@ export default function AdvancedSetting() {
     [setIsShowAnswerOnHover],
   )
 
+  const onChangeChapterLength = useCallback(
+    (value: number) => {
+      setChapterLengthConfig({ wordCount: normalizeChapterLength(value) })
+    },
+    [setChapterLengthConfig],
+  )
+
   return (
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
       <ScrollArea.Viewport className="h-full w-full px-3">
@@ -63,6 +79,39 @@ export default function AdvancedSetting() {
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`随机已${
                 randomConfig.isOpen ? '开启' : '关闭'
               }`}</span>
+            </div>
+          </div>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>每章单词数量</span>
+            <span className={styles.sectionDescription}>
+              自定义每一关练习的单词数，范围 {MIN_CHAPTER_LENGTH}-{MAX_CHAPTER_LENGTH}。修改后下一次载入章节生效
+            </span>
+            <div className={styles.block}>
+              <div className="flex flex-wrap items-center gap-2">
+                {CHAPTER_LENGTH_OPTIONS.map((value) => (
+                  <button
+                    key={value}
+                    className={`rounded-lg border px-3 py-2 text-sm ${
+                      chapterLengthConfig.wordCount === value
+                        ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-300 text-gray-600'
+                    }`}
+                    type="button"
+                    onClick={() => onChangeChapterLength(value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+                <input
+                  className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-indigo-400 focus:outline-none"
+                  type="number"
+                  min={MIN_CHAPTER_LENGTH}
+                  max={MAX_CHAPTER_LENGTH}
+                  value={chapterLengthConfig.wordCount}
+                  onChange={(event) => onChangeChapterLength(Number(event.target.value))}
+                />
+                <span className="text-xs text-gray-500">当前：{normalizeChapterLength(chapterLengthConfig.wordCount)} 个/章</span>
+              </div>
             </div>
           </div>
           <div className={styles.section}>

@@ -41,6 +41,17 @@ export type InfoPanelState = {
 export type LoopWordTimesOption = 1 | 3 | 5 | 8 | typeof Number.MAX_SAFE_INTEGER
 
 export type WordDictationType = 'hideAll' | 'hideVowel' | 'hideConsonant' | 'randomHide'
+export type AiProviderConfig = {
+  providerName: string
+  baseUrl: string
+  model: string
+  apiKey: string
+  supportsStructuredJson: boolean
+}
+
+export type ChapterLengthConfig = {
+  wordCount: number
+}
 /**
  * 标记用户是手动打开默写模式，还是通过点击 resultScreen 中的默写本章按钮打开的
  *

@@ -1,4 +1,4 @@
-import { CHAPTER_LENGTH } from '@/constants'
+import { CHAPTER_LENGTH, normalizeChapterLength } from '@/constants'
 import type { Howl } from 'howler'
 
 export * from './mixpanel'
@@ -91,8 +91,8 @@ export function getCurrentDate() {
   return `${year}${month}${day}`
 }
 
-export function calcChapterCount(length: number) {
-  return Math.ceil(length / CHAPTER_LENGTH)
+export function calcChapterCount(length: number, chapterLength = CHAPTER_LENGTH) {
+  return Math.ceil(length / normalizeChapterLength(chapterLength))
 }
 
 export function findCommonValues<T>(xs: T[], ys: T[]): T[] {

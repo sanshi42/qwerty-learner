@@ -1,32 +1,27 @@
 import { TypingContext, TypingStateActionType } from '../../store'
 import ShareButton from '../ShareButton'
-import { AuthorButton } from './AuthorButton'
+import AiLearningPanel from './AiLearningPanel'
 import ConclusionBar from './ConclusionBar'
+import QuizPanel from './QuizPanel'
 import RemarkRing from './RemarkRing'
 import WordChip from './WordChip'
-import styles from './index.module.css'
 import Tooltip from '@/components/Tooltip'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   currentChapterAtom,
   currentDictInfoAtom,
-  infoPanelStateAtom,
   isReviewModeAtom,
   randomConfigAtom,
   reviewModeInfoAtom,
   wordDictationConfigAtom,
 } from '@/store'
-import type { InfoPanelType } from '@/typings'
-import { recordOpenInfoPanelAction } from '@/utils'
+import type { WordWithIndex } from '@/typings'
 import { Transition } from '@headlessui/react'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useContext, useEffect, useMemo } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import IexportWords from '~icons/icon-park-outline/excel'
-import IconCoffee from '~icons/mdi/coffee'
-import IconXiaoHongShu from '~icons/my-icons/xiaohongshu'
-import IconGithub from '~icons/simple-icons/github'
-import IconWechat from '~icons/simple-icons/wechat'
 import IconX from '~icons/tabler/x'
 
 const ResultScreen = () => {
@@ -36,9 +31,9 @@ const ResultScreen = () => {
   const setWordDictationConfig = useSetAtom(wordDictationConfigAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
-  const setInfoPanelState = useSetAtom(infoPanelStateAtom)
   const randomConfig = useAtomValue(randomConfigAtom)
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('wrong')
 
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
@@ -75,6 +70,12 @@ const ResultScreen = () => {
         console.log('写入 xlsx 模块导入失败')
       })
   }, [currentChapter, currentDictInfo.name, state.chapterData])
+
+  const learnedWords = useMemo(() => {
+    return state.chapterData.userInputLogs
+      .map((log) => state.chapterData.words[log.index])
+      .filter((word): word is WordWithIndex => word !== undefined)
+  }, [state.chapterData.userInputLogs, state.chapterData.words])
 
   const wrongWords = useMemo(() => {
     return state.chapterData.userInputLogs
@@ -197,14 +198,6 @@ const ResultScreen = () => {
     { preventDefault: true },
   )
 
-  const handleOpenInfoPanel = useCallback(
-    (modalType: InfoPanelType) => {
-      recordOpenInfoPanelAction(modalType, 'resultScreen')
-      setInfoPanelState((state) => ({ ...state, [modalType]: true }))
-    },
-    [setInfoPanelState],
-  )
-
   return (
     <div className="fixed inset-0 z-30 overflow-y-auto">
       <div className="absolute inset-0 bg-gray-300 opacity-80 dark:bg-gray-600"></div>
@@ -217,77 +210,65 @@ const ResultScreen = () => {
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
-        <div className="flex h-screen items-center justify-center">
-          <div className="my-card fixed flex w-[90vw] max-w-6xl flex-col overflow-hidden rounded-3xl bg-white pb-14 pl-10 pr-5 pt-10 shadow-lg dark:bg-gray-800 md:w-4/5 lg:w-3/5">
-            <div className="text-center font-sans text-xl font-normal text-gray-900 dark:text-gray-400 md:text-2xl">
+        <div className="flex h-screen items-center justify-center p-4">
+          <div className="my-card fixed flex h-[86vh] max-h-[900px] w-[92vw] max-w-7xl flex-col overflow-hidden rounded-3xl bg-white px-6 pb-6 pt-8 shadow-lg dark:bg-gray-800 md:w-[86vw] lg:w-[78vw] xl:w-[72vw]">
+            <div className="flex-shrink-0 text-center font-sans text-xl font-normal text-gray-900 dark:text-gray-400 md:text-2xl">
               {`${currentDictInfo.name} ${isReviewMode ? '错题复习' : '第' + (currentChapter + 1) + '章'}`}
             </div>
             <button className="absolute right-7 top-5" onClick={exitButtonHandler}>
               <IconX className="text-gray-400" />
             </button>
-            <div className="mt-10 flex flex-row gap-2 overflow-hidden">
+            <div className="mt-6 flex min-h-0 flex-1 flex-row gap-4 overflow-hidden">
               <div className="flex flex-shrink-0 flex-grow-0 flex-col gap-3 px-4 sm:px-1 md:px-2 lg:px-4">
-                <RemarkRing remark={`${state.timerData.accuracy}%`} caption="正确率" percentage={state.timerData.accuracy} />
-                <RemarkRing remark={timeString} caption="章节耗时" />
-                <RemarkRing remark={state.timerData.wpm + ''} caption="WPM" />
+                <RemarkRing remark={`${state.timerData.accuracy}%`} caption="正确率" percentage={state.timerData.accuracy} size={6.25} />
+                <RemarkRing remark={timeString} caption="章节耗时" size={6.25} />
+                <RemarkRing remark={state.timerData.wpm + ''} caption="WPM" size={6.25} />
               </div>
-              <div className="z-10 ml-6 flex-1 overflow-visible rounded-xl bg-indigo-50 dark:bg-gray-700">
-                <div className="customized-scrollbar z-20 ml-8 mr-1 flex h-80 flex-row flex-wrap content-start gap-4 overflow-y-auto overflow-x-hidden pr-7 pt-9">
-                  {wrongWords.map((word, index) => (
-                    <WordChip key={`${index}-${word.name}`} word={word} />
-                  ))}
-                </div>
-                <div className="align-center flex w-full flex-row justify-start rounded-b-xl bg-indigo-200 px-4 dark:bg-indigo-400">
-                  <ConclusionBar mistakeLevel={mistakeLevel} mistakeCount={wrongWords.length} />
-                </div>
+              <div className="z-10 flex min-w-0 flex-1 overflow-hidden">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full min-h-0 w-full flex-col">
+                  <TabsList className="mb-3 self-start">
+                    <TabsTrigger value="wrong">错词回顾</TabsTrigger>
+                    <TabsTrigger value="ai">AI讲解</TabsTrigger>
+                    <TabsTrigger value="quiz">习题测试</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="wrong" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+                    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-indigo-50 dark:bg-gray-700">
+                      <div className="customized-scrollbar z-20 ml-8 mr-1 flex min-h-0 flex-1 flex-row flex-wrap content-start gap-4 overflow-y-auto overflow-x-hidden pr-7 pt-9">
+                        {wrongWords.map((word, index) => (
+                          <WordChip key={`${index}-${word.name}`} word={word} />
+                        ))}
+                      </div>
+                      <div className="align-center flex w-full flex-shrink-0 flex-row justify-start rounded-b-xl bg-indigo-200 px-4 dark:bg-indigo-400">
+                        <ConclusionBar mistakeLevel={mistakeLevel} mistakeCount={wrongWords.length} />
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="ai" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+                    <AiLearningPanel words={learnedWords} dictId={currentDictInfo.id} chapter={currentChapter} />
+                  </TabsContent>
+                  <TabsContent value="quiz" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+                    <QuizPanel words={learnedWords} dictId={currentDictInfo.id} chapter={currentChapter} />
+                  </TabsContent>
+                </Tabs>
               </div>
               <div className="ml-2 flex flex-col items-center justify-end gap-3 text-xl">
-                <AuthorButton />
                 {!isReviewMode && (
                   <>
                     <ShareButton />
-                    <IexportWords fontSize={18} className="cursor-pointer text-gray-500" onClick={exportWords}></IexportWords>
+                    <button
+                      type="button"
+                      className="cursor-pointer text-gray-500 hover:text-indigo-400 focus:outline-none"
+                      onClick={exportWords}
+                      title="导出本章词表 Excel"
+                      aria-label="导出本章词表 Excel"
+                    >
+                      <IexportWords fontSize={18} />
+                    </button>
                   </>
                 )}
-                <IconXiaoHongShu
-                  fontSize={15}
-                  className="cursor-pointer text-gray-500 hover:text-red-500 focus:outline-none"
-                  onClick={(e) => {
-                    handleOpenInfoPanel('redBook')
-                    e.currentTarget.blur()
-                  }}
-                />
-
-                <button
-                  onClick={(e) => {
-                    handleOpenInfoPanel('donate')
-                    e.currentTarget.blur()
-                  }}
-                  className="cursor-pointer"
-                  type="button"
-                  title="捐赠我们的项目"
-                >
-                  <IconCoffee fontSize={17} className={`text-gray-500 hover:text-amber-500  focus:outline-none ${styles.imgShake}`} />
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    handleOpenInfoPanel('community')
-                    e.currentTarget.blur()
-                  }}
-                  className="cursor-pointer text-gray-500 dark:text-gray-400"
-                  type="button"
-                  title="加入我们的社区"
-                >
-                  <IconWechat fontSize={16} className="text-gray-500 hover:text-green-500 focus:outline-none" />
-                </button>
-
-                <a href="https://github.com/Kaiyiwing/qwerty-learner" target="_blank" rel="noreferrer" className="leading-[0px]">
-                  <IconGithub fontSize={16} className="text-gray-500 hover:text-green-800 focus:outline-none" />
-                </a>
               </div>
             </div>
-            <div className="mt-10 flex w-full justify-center gap-5 px-5 text-xl">
+            <div className="mt-5 flex w-full flex-shrink-0 justify-center gap-5 px-5 text-xl">
               {!isReviewMode && (
                 <>
                   <Tooltip content="快捷键：shift + enter">

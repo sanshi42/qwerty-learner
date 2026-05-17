@@ -5,10 +5,7 @@ import type { RESET } from 'jotai/vanilla/utils/constants'
 
 type SetStateActionWithReset<Value> = Value | typeof RESET | ((prev: Value) => Value | typeof RESET)
 
-export default function atomForConfig<T extends Record<string, unknown>>(
-  key: string,
-  defaultValue: T,
-): WritableAtom<T, [SetStateActionWithReset<T>], void> {
+export default function atomForConfig<T extends object>(key: string, defaultValue: T): WritableAtom<T, [SetStateActionWithReset<T>], void> {
   const storageAtom = atomWithStorage(key, defaultValue)
   return atom((get) => {
     // Get the underlying object

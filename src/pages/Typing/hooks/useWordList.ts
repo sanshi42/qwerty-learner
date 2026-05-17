@@ -1,5 +1,5 @@
-import { CHAPTER_LENGTH } from '@/constants'
-import { currentChapterAtom, currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
+import { CHAPTER_LENGTH, normalizeChapterLength } from '@/constants'
+import { chapterLengthConfigAtom, currentChapterAtom, currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
 import type { Word, WordWithIndex } from '@/typings/index'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import { useAtom, useAtomValue } from 'jotai'
@@ -18,6 +18,7 @@ export type UseWordListResult = {
 export function useWordList(): UseWordListResult {
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
+  const chapterLength = normalizeChapterLength(useAtomValue(chapterLengthConfigAtom).wordCount)
   const { isReviewMode, reviewRecord } = useAtomValue(reviewModeInfoAtom)
 
   // Reset current chapter to 0, when currentChapter is greater than chapterCount.
@@ -25,7 +26,7 @@ export function useWordList(): UseWordListResult {
     setCurrentChapter(0)
   }
 
-  const isFirstChapter = !isReviewMode && currentDictInfo.id === 'cet4' && currentChapter === 0
+  const isFirstChapter = !isReviewMode && currentDictInfo.id === 'cet4' && currentChapter === 0 && chapterLength === CHAPTER_LENGTH
   const { data: wordList, error, isLoading } = useSWR(currentDictInfo.url, wordListFetcher)
 
   const words: WordWithIndex[] = useMemo(() => {
@@ -35,7 +36,7 @@ export function useWordList(): UseWordListResult {
     } else if (isReviewMode) {
       newWords = reviewRecord?.words ?? []
     } else if (wordList) {
-      newWords = wordList.slice(currentChapter * CHAPTER_LENGTH, (currentChapter + 1) * CHAPTER_LENGTH)
+      newWords = wordList.slice(currentChapter * chapterLength, (currentChapter + 1) * chapterLength)
     } else {
       newWords = []
     }
@@ -56,7 +57,7 @@ export function useWordList(): UseWordListResult {
         trans,
       }
     })
-  }, [isFirstChapter, isReviewMode, wordList, reviewRecord?.words, currentChapter])
+  }, [chapterLength, isFirstChapter, isReviewMode, wordList, reviewRecord?.words, currentChapter])
 
   return { words, isLoading, error }
 }
